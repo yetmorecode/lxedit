@@ -14,54 +14,59 @@ void fixups_refresh() {
 	    wattron(l->tree, A_BOLD);
 	}
 	lx_fixup *f = exe->fixups[l->active_page-1][i];
-	int col = 28;
+	int col = 19;
 	switch(f->type & OSF_SOURCE_MASK) {
 		case 0:
-			mvwprintw(l->tree, row, col, "%s (%02x)", "byte fixup", f->type);
+			mvwprintw(l->tree, row, col, "%s", "byte fixup");
 			break;
 		case 1:
-			mvwprintw(l->tree, row, col, "%s (%02x)","undefined", f->type);
+			mvwprintw(l->tree, row, col, "%s","undefined1");
 			break;
 		case 2:
-			mvwprintw(l->tree, row, col, "%s (%02x)","segment fixup", f->type);
+			mvwprintw(l->tree, row, col, "%s","segment fixup");
 			break;
 		case 3:
-			mvwprintw(l->tree, row, col, "%s (%02x)","32bit pointer", f->type);
+			mvwprintw(l->tree, row, col, "%s","32bit pointer");
 			break;
 		case 4:
-			mvwprintw(l->tree, row, col, "%s (%02x)","undefined", f->type);
+			mvwprintw(l->tree, row, col, "%s","undefined4");
 			break;
 		case 5:
-			mvwprintw(l->tree, row, col, "%s (%02x)","16bit offset fixup", f->type);
+			mvwprintw(l->tree, row, col, "%s","16bit offset fixup");
 			break;
 		case 6:
-			mvwprintw(l->tree, row, col, "%s (%02x)","16:32bit pointer", f->type);
+			mvwprintw(l->tree, row, col, "%s","16:32bit pointer");
 			break;
 		case 7:
-			mvwprintw(l->tree, row, col, "%s (%02x)","32bit offset fixup", f->type);
+			mvwprintw(l->tree, row, col, "%s","32bit offset fixup");
 			break;
 		case 8:
-			mvwprintw(l->tree, row, col, "%s (%02x)","32bit relative", f->type);
+			mvwprintw(l->tree, row, col, "%s","32bit relative");
 			break;
 
 	}
-	col = 55;
+	col = 43;
 	switch (f->flags & OSF_TARGET_MASK) {
 	    case OSF_TARGET_INTERNAL:
 		mvwprintw(l->tree, row, col, "%s", "internal ref");
+		mvwprintw(l->tree, row, 60, "%08x (%x:%06x)",
+			exe->object_records[f->object-1].addr + f->target_off,
+			f->object,
+			f->target_off);
 	    	break;
 	    case OSF_TARGET_EXT_ORD:
-		mvwprintw(l->tree, row, col, "%s", "import by ordinal");
+		mvwprintw(l->tree, row, col, "%s", "import by ord");
 	    	break;
 	    case OSF_TARGET_EXT_NAME:
 		mvwprintw(l->tree, row, col, "%s", "import by name");
 	    	break;
 	    case OSF_TARGET_INT_VIA_ENTRY:
-		mvwprintw(l->tree, row, col, "%s", "internal ref via entry");
+		mvwprintw(l->tree, row, col, "%s", "ref via entry");
 	    	break;
 
 	}
-	mvwprintw(l->tree, row, 8, "%08x (%04x)", r->addr + (l->active_page - r->mapidx)*exe->lx.page_size + f->src_off, f->src_off);
+	mvwprintw(l->tree, row, 6, "@%08x", r->addr + (l->active_page - r->mapidx)*exe->lx.page_size + f->src_off);
+	mvwprintw(l->tree, row, 39, "to");
 	mvwprintw(l->tree, row++, 0, "%04d", i+1);
 	wattroff(l->tree, A_BOLD);
     }

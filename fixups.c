@@ -3,7 +3,7 @@
 void fixups_refresh() {
     lxedit_layout *l = lx->layout;
     int row = 0;
-    exe *exe = l->active_exe;
+    exe *exe = lx->executables[l->active_exe];
     object_record *r = exe->object_records + l->active_object;
 
     for (int i = 0; i < exe->fixup_count[l->active_page-1]; i++) {
@@ -74,7 +74,7 @@ void fixups_refresh() {
 
     wclear(l->status);
     mvwprintw(l->status, 0, 0, "%s > Object #%d > Page #%d (%x - %x)",
-    	l->active_exe->name,
+    	lx->executables[l->active_exe]->name,
 	l->active_object+1,
 	l->active_page,
 	r->addr + (l->active_page - r->mapidx)*exe->lx.page_size,
@@ -83,7 +83,7 @@ void fixups_refresh() {
 }
 
 void *fixups_input(int ch) {
-    exe *exe = lx->layout->active_exe;
+    exe *exe = lx->executables[lx->layout->active_exe];
     lxedit_layout *l = lx->layout;
     switch(ch) {
 	case KEY_LEFT:

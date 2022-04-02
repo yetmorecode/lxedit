@@ -112,76 +112,81 @@ int lx_fixup_length(char *begin) {
 	return lx_fixup_parse(begin, NULL);
 }
 
-int open_exe(char *name, exe *exe) {
+exe *open_exe(char *name) {
+    	exe *e;
+	e = (exe *)malloc(sizeof(exe));
 	char *cwd = getcwd(NULL, 0);
 	char *filename = (char*)malloc(strlen(cwd) + strlen(name) + 2);
 	sprintf(filename, "%s\\%s", cwd, name);
-	exe->name = filename;
+	e->name = filename;
 	FILE *file = fopen(filename, "rb");
 	if (file == NULL) {
-		return -1;
+	    return NULL;
 	}
-	stat(filename, &exe->stat);
-	int r = fread(&exe->mz, sizeof(exe->mz), 1, file);
+	e->stat = (struct stat*)malloc(sizeof(*e->stat));
+	stat(filename, e->stat);
+	int r = fread(&e->mz, sizeof(e->mz), 1, file);
 	if (r != 1) {
-		return -1;
+	    return NULL;
 	}
-	if (exe->mz.e_magic != 0x5a4d) {
-		curs_set(1);
-		return -1;
+	if (e->mz.e_magic != 0x5a4d) {
+	    curs_set(1);
+	    return NULL;
 	}
-	r = fseek(file, exe->mz.e_lfanew, SEEK_SET);
+	r = fseek(file, e->mz.e_lfanew, SEEK_SET);
 	if (r != 0) {
-		return -1;
+	    return NULL;
 	}
-	r = fread(&exe->lx, sizeof(exe->lx), 1, file);
+	r = fread(&e->lx, sizeof(e->lx), 1, file);
 	if (r != 1) {
-		return -1;
+	    return NULL;
 	}
 
-	exe->object_records = (object_record *)malloc(exe->lx.num_objects * sizeof(object_record));
-	fseek(file, exe->mz.e_lfanew + exe->lx.objtab_off, SEEK_SET);
-	fread(exe->object_records, sizeof(object_record), exe->lx.num_objects, file);
+	e->object_records = (object_record *)malloc(e->lx.num_objects * sizeof(object_record));
+	fseek(file, e->mz.e_lfanew + e->lx.objtab_off, SEEK_SET);
+	fread(e->object_records, sizeof(object_record), e->lx.num_objects, file);
 
-	exe->object_map = (map_entry *)malloc(exe->lx.num_pages * sizeof(map_entry));
-	fseek(file, exe->mz.e_lfanew + exe->lx.objmap_off, SEEK_SET);
-	if (exe->lx.signature == OSF_FLAT_SIGNATURE) {
-		// LE
-		fread(exe->object_map, sizeof(le_map_entry), exe->lx.num_pages, file);
-	} else {
-		// LX
-		fread(exe->object_map, sizeof(lx_map_entry), exe->lx.num_pages, file);
+	e->object_map = (map_entry *)malloc(e->lx.num_pages * sizeof(map_entry));
+	fseek(file, e->mz.e_lfanew + e->lx.objmap_off, SEEK_SET);
+	for (int i = 0; i < e->lx.num_pages; i++) {
+		if (e->lx.signature == OSF_FLAT_SIGNATURE) {
+		    // LE
+		    fread(e->object_map + i, sizeof(le_map_entry), 1, file);
+		} else {
+		    // LX
+		    fread(e->object_map + i, sizeof(lx_map_entry), 1, file);
+		}
 	}
 
-	exe->fixup_map = (unsigned long*)malloc(sizeof(long)*(exe->lx.num_pages+1));
-	fseek(file, exe->mz.e_lfanew + exe->lx.fixpage_off, SEEK_SET);
-	fread(exe->fixup_map, sizeof(long), exe->lx.num_pages+1, file);
+	e->fixup_map = (unsigned long*)malloc(sizeof(long)*(e->lx.num_pages+1));
+	fseek(file, e->mz.e_lfanew + e->lx.fixpage_off, SEEK_SET);
+	fread(e->fixup_map, sizeof(long), e->lx.num_pages+1, file);
 
-	exe->fixup_count = (int*)malloc(sizeof(int) * exe->lx.num_pages);
-	exe->fixups = (lx_fixup ***)malloc(sizeof(void*) * exe->lx.num_pages);
-	char *fixup_data = (char*)malloc(exe->lx.fixup_size);
-	fseek(file, exe->mz.e_lfanew + exe->lx.fixrec_off, SEEK_SET);
-	fread(fixup_data, exe->lx.fixup_size - sizeof(int)*(exe->lx.num_pages+1), 1, file);
+	e->fixup_count = (int*)malloc(sizeof(int) * e->lx.num_pages);
+	e->fixups = (lx_fixup ***)malloc(sizeof(void*) * e->lx.num_pages);
+	char *fixup_data = (char*)malloc(e->lx.fixup_size);
+	fseek(file, e->mz.e_lfanew + e->lx.fixrec_off, SEEK_SET);
+	fread(fixup_data, e->lx.fixup_size - sizeof(int)*(e->lx.num_pages+1), 1, file);
 
-	for (int i = 0; i < exe->lx.num_pages; i++) {
+	for (int i = 0; i < e->lx.num_pages; i++) {
 		// Read fixups for page
-		char *begin = fixup_data + exe->fixup_map[i];
-		char *end = fixup_data + exe->fixup_map[i+1];
-		exe->fixup_count[i] = 0;
+		char *begin = fixup_data + e->fixup_map[i];
+		char *end = fixup_data + e->fixup_map[i+1];
+		e->fixup_count[i] = 0;
 		while (begin < end) {
 		    	begin += lx_fixup_length(begin);
-			exe->fixup_count[i]++;
+			e->fixup_count[i]++;
 		}
-		exe->fixups[i] = (lx_fixup**)malloc(exe->fixup_count[i] * sizeof(lx_fixup*));
-		begin = fixup_data + exe->fixup_map[i];
+		e->fixups[i] = (lx_fixup**)malloc(e->fixup_count[i] * sizeof(lx_fixup*));
+		begin = fixup_data + e->fixup_map[i];
 		int j = 0;
 		while (begin < end) {
 		    	lx_fixup *f = (lx_fixup*)malloc(sizeof(lx_fixup));
 			begin += lx_fixup_parse(begin, f);
-			exe->fixups[i][j++] = f;
+			e->fixups[i][j++] = f;
 		}
 	}
-	return 0;
+	return e;
 }
 
 void goodbye() {
@@ -219,12 +224,12 @@ int main (int ac, char **av) {
 	wbkgd(layout->header, COLOR_PAIR(COLOR_HEADER));
 	mvwprintw(layout->header, 0, layout->screen_width/2 - strlen(TITLE)/2, TITLE);
 
-	lx->executables = (exe*)malloc((ac-1)*sizeof(exe));
+	lx->executables = (exe**)malloc((ac-1)*sizeof(exe*));
 	lx->num_executables = ac-1;
 	for (int i = 1; i < ac; i++) {
-		open_exe(av[i], &lx->executables[i-1]);
+		lx->executables[i-1] = open_exe(av[i]);
 	}
-	layout->active_exe = lx->executables;
+	layout->active_exe = 0;
 
 	layout->status = newwin(1, layout->screen_width, layout->screen_height - 1, 0);
 	layout->tree = newwin(layout->screen_height - 2, layout->screen_width, 1, 0);

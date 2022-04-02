@@ -352,7 +352,7 @@ typedef struct {
 
 typedef struct {
 	char *name;
-	struct stat stat;
+	struct stat *stat;
 	IMAGE_DOS_HEADER mz;
 	os2_flat_header lx;
 	object_record *object_records;
@@ -362,6 +362,7 @@ typedef struct {
 	lx_fixup ***fixups;
 	// by page
 	int *fixup_count;
+	char **pages;
 } exe;
 
 typedef struct {
@@ -377,7 +378,7 @@ typedef struct {
 	WINDOW *tree;
 	WINDOW *tree_head;
 	WINDOW *status;
-	exe *active_exe;
+	int active_exe;
 	int active_object;
 	int show_object;
 	int active_page;
@@ -391,7 +392,7 @@ typedef struct {
 typedef struct {
 	lxedit_layout *layout;
 	int num_executables;
-	exe *executables;
+	exe **executables;
 } lxedit;
 
 extern lxedit *lx;

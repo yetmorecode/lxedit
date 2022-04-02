@@ -4,7 +4,7 @@ void pages_refresh() {
 	lxedit_layout *layout = lx->layout;
 	wclear(layout->tree);
 	int row = 1;
-	exe *exe = layout->active_exe;
+	exe *exe = lx->executables[layout->active_exe];
 	object_record *r = &exe->object_records[layout->active_object];
 	for (int i = 0; i < r->mapsize; i++) {
 		int page = r->mapidx + i;
@@ -76,7 +76,7 @@ void pages_refresh() {
 
 void *pages_input(int ch) {
 	lxedit_layout *layout = lx->layout;
-	exe *exe = layout->active_exe;
+	exe *exe = lx->executables[layout->active_exe];
 	object_record *r = &exe->object_records[layout->active_object];
 	switch (ch) {
 		case KEY_LEFT:

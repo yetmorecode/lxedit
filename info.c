@@ -4,7 +4,7 @@ void info_refresh() {
     lxedit_layout *l = lx->layout;
     wclear(l->tree);
     int row = 0;
-    exe *exe = lx->layout->active_exe;
+    exe *exe = lx->executables[lx->layout->active_exe];
     mvwprintw(l->tree, row++, 0, "%s", exe->name);
     mvwprintw(l->tree, row, 0, "%6x - %6x", 0, sizeof(exe->mz));
     mvwprintw(l->tree, row++, 16, "MZ header");
@@ -47,8 +47,10 @@ void info_refresh() {
     mvwprintw(l->tree, row++, 18, "import proc");
     mvwprintw(l->tree, row, 0, "%6x - %6x", exe->lx.page_off, exe->lx.page_off + (exe->lx.num_pages-1)*exe->lx.page_size + exe->lx.l.last_page);
     mvwprintw(l->tree, row++, 16, "LX pages");
-    mvwprintw(l->tree, row, 0, "         %6x", exe->stat.st_size);
-    mvwprintw(l->tree, row++, 16, "EOF");
+    if (exe->stat != NULL) {
+	    mvwprintw(l->tree, row, 0, "         %6x", exe->stat->st_size);
+	    mvwprintw(l->tree, row++, 16, "EOF");
+    }
 
     int col2 = l->screen_width / 4 * 2 - 6;
     row = 0;

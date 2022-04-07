@@ -1,0 +1,7 @@
+		name lxedit.exe 	
+		system dos32a
+		file {
+			..\pdcurses\dos\pdcurses.lib 
+			lxedit.obj lx.obj objects.obj pages.obj fixups.obj info.obj
+		}
+		option quiet

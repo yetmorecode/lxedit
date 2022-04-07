@@ -16,18 +16,30 @@ void pages_refresh() {
 		}
 		if (exe->lx.signature == OSF_FLAT_SIGNATURE) {
 			// LE
-			le_map_entry *lemap = (le_map_entry*)exe->object_map;
-			int page_num = lemap[page-1].page_num[2] + (lemap[page-1].page_num[1] << 8) + (lemap[page-1].page_num[0] << 16);
+			le_map_entry *lemap = (le_map_entry*)(&exe->object_map[page-1]);
+			int page_num = lemap->page_num[2] + (lemap->page_num[1] << 8) + (lemap->page_num[0] << 16);
 			mvwprintw(layout->tree, row, 10, "~%d", page_num);
 			mvwprintw(layout->tree, row, 28, "%06x - %06x",
 				exe->lx.page_off + (page_num-1) * exe->lx.page_size,
 				exe->lx.page_off + page_num * exe->lx.page_size);
-			switch (lemap[i].flags) {
+			switch (lemap->flags) {
 				case PAGE_VALID:
 					mvwprintw(layout->tree, row, 16, "valid");
 					break;
+				case PAGE_ITERATED:
+					mvwprintw(layout->tree, row, 16, "iter");
+					break;
+				case PAGE_INVALID:
+					mvwprintw(layout->tree, row, 16, "inval");
+					break;
+				case PAGE_ZEROED:
+					mvwprintw(layout->tree, row, 16, "zero");
+					break;
+				case PAGE_RANGE:
+					mvwprintw(layout->tree, row, 16, "range");
+					break;
 				default:
-					mvwprintw(layout->tree, row, 16, "%x", lemap[page-1].flags);
+					mvwprintw(layout->tree, row, 16, "%x", lemap->flags);
 					break;
 			}
 			mvwprintw(layout->tree, row, 44, "%08x - %08x",
@@ -36,10 +48,10 @@ void pages_refresh() {
 				exe->lx.page_size);
 		} else {
 			// LX
-			lx_map_entry *lxmap = (lx_map_entry*)exe->object_map;
-			int offset = lxmap[page-1].page_offset;
-			int size = lxmap[page-1].data_size;
-			int flags = lxmap[page-1].flags;
+			lx_map_entry *lxmap = (lx_map_entry*)(&exe->object_map[page-1]);
+			int offset = lxmap->page_offset;
+			int size = lxmap->data_size;
+			int flags = lxmap->flags;
 			mvwprintw(layout->tree, row, 16, "%x", size);
 			mvwprintw(layout->tree, row, 22, "%04x", flags);
 			mvwprintw(layout->tree, row, 29, "%06x - %06x",

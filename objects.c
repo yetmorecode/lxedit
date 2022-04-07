@@ -3,61 +3,6 @@
 #include <stdlib.h>
 #include <direct.h>
 
-exe *merge(exe *to, exe *from) {
-    exe *n;
-    n = (exe *)malloc(sizeof(exe));
-    n->stat = NULL;
-    // Set new name
-    char *cwd = getcwd(NULL, 0);
-    char *shortname = to->name + strlen(to->name) - 1;
-    while (*shortname && *shortname != '\\') {
-       	shortname--;
-    }
-    n->name = (char*)malloc(strlen(cwd) + strlen(shortname) + 10);
-    sprintf(n->name, "%s%s", cwd, shortname);
-
-    // Copy MZ and LE headers from first exe
-    memcpy(&n->mz, &to->mz, sizeof(n->mz));
-    memcpy(&n->lx, &to->lx, sizeof(n->lx));
-
-    // Objects
-    n->object_records = (object_record *)malloc(sizeof(object_record) * (to->lx.num_objects + from->lx.num_objects));
-    n->lx.num_objects = to->lx.num_objects + from->lx.num_objects;
-    // Copy objects from first exe
-    memcpy(n->object_records, to->object_records, sizeof(object_record) * to->lx.num_objects);
-    // Copy objects from second exe
-    memcpy(n->object_records + to->lx.num_objects, from->object_records, sizeof(object_record) *from->lx.num_objects);
-    uint32_t vbase_shift = to->object_records[to->lx.num_objects-1].addr + to->object_records[to->lx.num_objects-1].size;
-    vbase_shift = (vbase_shift / from->object_records[0].addr) * from->object_records[0].addr;
-    int page_shift = to->lx.num_pages;
-    for (int i=0; i < from->lx.num_objects; i++) {
-	n->object_records[to->lx.num_objects + i].addr += vbase_shift;
-	n->object_records[to->lx.num_objects + i].mapidx += page_shift;
-    }
-
-    // Pages
-    n->lx.num_pages = to->lx.num_pages + from->lx.num_pages;
-    n->lx.l.last_page = from->lx.l.last_page;
-    int lx_shift = from->lx.num_objects * sizeof(object_record);
-    n->lx.objmap_off += lx_shift;
-
-    lx_shift += from->lx.num_pages * sizeof(le_map_entry);
-    n->lx.resname_off += lx_shift;
-    n->lx.entry_off += lx_shift;
-    n->lx.fixpage_off += lx_shift;
-    lx_shift += from->lx.num_pages * sizeof(uint32_t);
-    n->lx.fixup_size += from->lx.num_pages * sizeof(uint32_t);
-    n->lx.fixrec_off += lx_shift;
-    n->lx.impmod_off += lx_shift;
-    n->lx.impproc_off += lx_shift;
-    n->lx.page_off += lx_shift;
-
-    // map
-    n->object_map = (map_entry*)malloc(n->lx.num_pages * sizeof(map_entry));
-
-    return n;
-}
-
 void *objects_input(int ch) {
 	lxedit_layout *layout = lx->layout;
 	switch (ch) {
@@ -108,20 +53,21 @@ void *objects_input(int ch) {
 		}
 		break;
 	case 'm':
-		if (layout->active_exe == 0) {
-		    break;
-		} else {
-		exe **new_executables = (exe **)malloc(lx->num_executables-1);
-		new_executables[0] = merge(lx->executables[0], lx->executables[layout->active_exe]);
-		for (int i=1, j=1; i < lx->num_executables; i++) {
-		    if (i != layout->active_exe) {
-			new_executables[j++] = lx->executables[i];
-		    }
+		{
+		exe **new_executables = (exe **)malloc(sizeof(exe*));
+		exe *e = lx->executables[0];
+		for (int i=1; i < lx->num_executables; i++) {
+		    e = lx_merge(e, lx->executables[i], layout->active_exe == i);
 		}
+		new_executables[0] = e;
+		lx_save(e);
 		lx->executables = new_executables;
-		lx->num_executables = lx->num_executables-1;
+		lx->num_executables = 1;
 		layout->active_exe = 0;
 		}
+		break;
+	case 's':
+		lx_save(lx->executables[layout->active_exe]);
 		break;
 	default:
 		break;

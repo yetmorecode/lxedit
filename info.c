@@ -47,6 +47,20 @@ void info_refresh() {
     mvwprintw(l->tree, row++, 18, "import proc");
     mvwprintw(l->tree, row, 0, "%6x - %6x", exe->lx.page_off, exe->lx.page_off + (exe->lx.num_pages-1)*exe->lx.page_size + exe->lx.l.last_page);
     mvwprintw(l->tree, row++, 16, "LX pages");
+    if (exe->lx.debug_off) {
+	mvwprintw(l->tree, row, 0, "%6x - %6x", exe->lx.debug_off, exe->lx.debug_off + sizeof(*exe->debug_header));
+	mvwprintw(l->tree, row++, 16, "WATCOM debug");
+	mvwprintw(l->tree, row, 0, "%6x - %6x", exe->lx.debug_off + exe->debug_header->e_shoff, exe->lx.debug_off + exe->debug_header->e_shoff + (exe->debug_header->e_shentsize * exe->debug_header->e_shnum));
+	mvwprintw(l->tree, row++, 16, " section headers");
+	for (int i=0; i < exe->debug_header->e_shnum; i++) {
+	    char *strtab = (char*)exe->debug_data[exe->debug_header->e_shstrndx];
+	    if (exe->debug_sections[i].sh_type == 0) {
+		continue;
+	    }
+	    mvwprintw(l->tree, row, 0, "%6x - %6x", exe->lx.debug_off + exe->debug_sections[i].sh_offset, exe->lx.debug_off + exe->debug_sections[i].sh_offset + exe->debug_sections[i].sh_size);
+	    mvwprintw(l->tree, row++, 16, " %s", strtab + exe->debug_sections[i].sh_name);
+	}
+    }
     if (exe->stat != NULL) {
 	    mvwprintw(l->tree, row, 0, "         %6x", exe->stat->st_size);
 	    mvwprintw(l->tree, row++, 16, "EOF");
